@@ -4,9 +4,9 @@ import numpy, cv2, sys, os
 
 cascadeRightEar = cv2.CascadeClassifier("haarcascade_mcs_rightear.xml")
 cascadeLeftEar = cv2.CascadeClassifier("haarcascade_mcs_leftear.xml")
-cascadeHeadFront = cv2.CascadeClassifier("haarcascade_frontalface_alt_tree.xml")
-cascadeHeadSide = cv2.CascadeClassifier("haarcascade_profileface.xml")
-cascadeHeadAndSholders = cv2.CascadeClassifier("HS.xml")
+# cascadeHeadFront = cv2.CascadeClassifier("haarcascade_frontalface_alt_tree.xml")
+# cascadeHeadSide = cv2.CascadeClassifier("haarcascade_profileface.xml")
+# cascadeHeadAndSholders = cv2.CascadeClassifier("HS.xml")
 
 inDir = "./AWEForSegmentation/train"
 outDir = "./myOut/"
@@ -14,28 +14,29 @@ annotRectDir = "./AWEForSegmentation/trainannot_rect"
 
 def detectLeftEar(img, annotImg, scaleFactor, minNeighbors, validate = False):
 	detectionList = list(cascadeLeftEar.detectMultiScale(img, scaleFactor, minNeighbors))
-	if validate:
-		validatedList = []
-		#bbs = getBoundingBoxes(annotImg)
-		for detection in detectionList:
-			# valid = validateDetection(bbs, detection)
-			valid = validateColor(img, detection)
-			validatedList.append([detection, valid])
-		detectionList = validatedList
+	validatedList = []
+	bbs = getBoundingBoxes(annotImg) if validate else None
+	for detection in detectionList:
+		# valid = validateDetection(bbs, detection)
+		valid = validateColor(img, detection)
+		if valid:
+			validatedList.append([detection, validateDetection(bbs, detection) if validate else True])
+	detectionList = validatedList
 	return detectionList
 
 def detectRightEar(img, annotImg, scaleFactor, minNeighbors, validate = False):
 	detectionList = list(cascadeRightEar.detectMultiScale(img, scaleFactor, minNeighbors))
-	if validate:
-		validatedList = []
-		#bbs = getBoundingBoxes(annotImg)
-		for detection in detectionList:
-			# valid = validateDetection(bbs, detection)
-			valid = validateColor(img, detection)
-			validatedList.append([detection, valid])
-		detectionList = validatedList
+	validatedList = []
+	bbs = getBoundingBoxes(annotImg) if validate else None
+	for detection in detectionList:
+		# valid = validateDetection(bbs, detection)
+		valid = validateColor(img, detection)
+		if valid:
+			validatedList.append([detection, validateDetection(bbs, detection) if validate else True])
+	detectionList = validatedList
 	return detectionList
 
+'''
 def detectHeadSide(img, scaleFactor, minNeighbors):
 	sideDetectionList = list(cascadeHeadSide.detectMultiScale(img, scaleFactor, minNeighbors))
 	if len(sideDetectionList) > 0:
@@ -53,6 +54,7 @@ def detectHeadAndSholders(img, scaleFactor, minNeighbors):
 	if len(detectionList) > 0:
 		return sorted(detectionList, key=lambda x: x[2] * x[3], reverse=True)[0]
 	return None
+'''
 
 def intersection(a, b):
 	x = max(a[0], b[0])
@@ -115,6 +117,10 @@ def process(scaleFactor, minNeighbors, visualize = False):
 	validEars = 0;
 	maxEars = ["", 0]
 	maxValidEars = ["", 0]
+
+	if not os.path.exists(outDir):
+		os.makedirs(outDir)
+
 	files = os.listdir(inDir)
 	for file in files:
 		if file.endswith(".png"):
@@ -159,15 +165,29 @@ def process(scaleFactor, minNeighbors, visualize = False):
 	f.write("##################################################\n")
 	f.close()
 
+def detect(file, outputDir, scaleFactor, minNeighbors):
+	if not os.path.exists(outputDir):
+		os.makedirs(outputDir)
 
-if not os.path.exists(outDir):
-	os.makedirs(outDir)
+	img = cv2.imread(file)
+
+	leftEarDetectionList = detectLeftEar(img, None, scaleFactor, minNeighbors, False)
+	rightEarDetectionList = detectRightEar(img, None, scaleFactor, minNeighbors, False)
+	print(leftEarDetectionList + rightEarDetectionList)
+
+	writeToImage(img, leftEarDetectionList, rightEarDetectionList, outputDir, file.split("/")[-1])
+
 
 # for sf in [1.4, 1.3, 1.2, 1.1, 1.05, 1.01]:
 # 	for mn in [1, 2, 3, 4, 5]:
 # 		#print(sf, " - ", mn)
 # 		process(sf, mn)
 
-process(1.01, 5, True)
+# process(1.01, 5, True)
+
+
+file = sys.argv[1]
+outputDir = sys.argv[2]
+detect(file, outputDir, 1.01, 5)
 
 sys.exit()
